@@ -1,0 +1,234 @@
+{
+    "profile": {
+        "username": "sidhu_moosewala",
+        "followers": 18360940,
+        "following": 4,
+        "total_posts": 314,
+        "verified": true,
+        "private": false,
+        "profile_pic_url": "https://instagram.fflr4-2.fna.fbcdn.net/v/t51.2885-19/474322990_1362524248245249_4458923119673137137_n.jpg?stp=dst-jpg_s320x320_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fflr4-2.fna.fbcdn.net&_nc_cat=1&_nc_oc=Q6cZ2gFiKB8YkgalI-whVxaPrPCUrFScVs5OPalRrT-hI7Yi_4sUxLjWwx73C8z4nM919QY&_nc_ohc=wL6iXvcTYMcQ7kNvwGjGnut&_nc_gid=ly43kmGwWsqZJiLhEyYO2g&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AQNSjJKgyRvLZqIwYVwOsO3B-ZOdf2dpDhqEXHL2Hj3FDQ&oe=6AD2AA3E&_nc_sid=8b3546",
+        "full_name": "Sidhu Moosewala (ਮੂਸੇ ਆਲਾ)",
+        "biography": "Official account of Sidhu Moose Wala. \nManaged and operated by his family.\n📧: info@sidhumoosewala.net"
+    },
+    "metrics": {
+        "total_interactions": 40618996,
+        "average_interactions_per_post": 2707933.066666667,
+        "total_comments": 2490197,
+        "average_comments": 166013.13333333333,
+        "total_likes": 38128799,
+        "average_likes": 2541919.933333333,
+        "total_video_views": 54537117,
+        "average_video_views": 7791016.714285715
+    },
+    "top_posts": [
+        {
+            "short_code": "DX8f8QulAKn",
+            "post_name": "Eyes On Me",
+            "caption": "Kaka, YAMDOOT hun bike’an utte aunde ne.\n\nEYES ON ME OUT NOW ON ALL PLATFORMS.\n\nKeep commenting on BAROTA 🎯 20M for the next update ⚔️",
+            "likes": 5828263,
+            "comments": 181288,
+            "views": null,
+            "url": "https://www.instagram.com/p/DX8f8QulAKn/",
+            "timestamp": "2026-05-05T05:30:18.000Z"
+        },
+        {
+            "short_code": "DV_InT0jTJ7",
+            "post_name": "Generations Can Be",
+            "caption": "GENERATIONS CAN BE SILENT, UNTIL ONE VOICE WAKES THEM UP. \n\nSIDHU MOOSE WALA -  SIGNED TO GOD WORLD TOUR 2026 🌎 @platinumeventsinc \n\nVisuals - @navkaranbrar1",
+            "likes": 3819251,
+            "comments": 358266,
+            "views": 14019760,
+            "url": "https://www.instagram.com/p/DV_InT0jTJ7/",
+            "timestamp": "2026-03-17T13:09:33.000Z"
+        },
+        {
+            "short_code": "DZcuc_0gAIC",
+            "post_name": "Forever Legendary",
+            "caption": "FOREVER YOUNG, FOREVER LEGENDARY 👑🕊️\n\n1993 - ♾️",
+            "likes": 3573476,
+            "comments": 175222,
+            "views": null,
+            "url": "https://www.instagram.com/p/DZcuc_0gAIC/",
+            "timestamp": "2026-06-11T14:24:12.000Z"
+        }
+    ],
+    "posting_analysis": [
+        {
+            "hour": 2,
+            "posts": 2,
+            "average_likes": 1738865.5
+        },
+        {
+            "hour": 16,
+            "posts": 2,
+            "average_likes": 2729800.0
+        },
+        {
+            "hour": 0,
+            "posts": 1,
+            "average_likes": 993930.0
+        },
+        {
+            "hour": 14,
+            "posts": 1,
+            "average_likes": 3573476.0
+        },
+        {
+            "hour": 12,
+            "posts": 1,
+            "average_likes": 1204443.0
+        },
+        {
+            "hour": 19,
+            "posts": 1,
+            "average_likes": 2098579.0
+        },
+        {
+            "hour": 4,
+            "posts": 2,
+            "average_likes": 2171595.5
+        },
+        {
+            "hour": 15,
+            "posts": 1,
+            "average_likes": 2290019.0
+        },
+        {
+            "hour": 5,
+            "posts": 2,
+            "average_likes": 4579557.5
+        },
+        {
+            "hour": 9,
+            "posts": 1,
+            "average_likes": 1709464.0
+        },
+        {
+            "hour": 13,
+            "posts": 1,
+            "average_likes": 3819251.0
+        }
+    ],
+    "content_analysis": [
+        {
+            "content_type": "carousel_container",
+            "posts": 4,
+            "average_likes": 3722444.75
+        },
+        {
+            "content_type": "feed",
+            "posts": 4,
+            "average_likes": 2040748.5
+        },
+        {
+            "content_type": "clips",
+            "posts": 7,
+            "average_likes": 2153718.0
+        }
+    ],
+    "video_analysis": [
+        {
+            "short_code": "DdjJiiozUIV",
+            "views": 6120021,
+            "likes": 1204443,
+            "comments": 163362,
+            "interaction_rate": 22.35
+        },
+        {
+            "short_code": "DeCwpvapAHn",
+            "views": 6025086,
+            "likes": 2098579,
+            "comments": 129998,
+            "interaction_rate": 36.99
+        },
+        {
+            "short_code": "Dd7039mtZCv",
+            "views": 3957878,
+            "likes": 1320543,
+            "comments": 72736,
+            "interaction_rate": 35.2
+        },
+        {
+            "short_code": "DXgEXYlB_KA",
+            "views": 7177468,
+            "likes": 2041114,
+            "comments": 293789,
+            "interaction_rate": 32.53
+        },
+        {
+            "short_code": "DcgjHXQz750",
+            "views": 9639138,
+            "likes": 2290019,
+            "comments": 216159,
+            "interaction_rate": 26.0
+        },
+        {
+            "short_code": "DeTOqUEtoU5",
+            "views": 7597766,
+            "likes": 2302077,
+            "comments": 105418,
+            "interaction_rate": 31.69
+        },
+        {
+            "short_code": "DV_InT0jTJ7",
+            "views": 14019760,
+            "likes": 3819251,
+            "comments": 358266,
+            "interaction_rate": 29.8
+        }
+    ],
+    "growth": {
+        "status": "available",
+        "start_date": "2026-10-12",
+        "end_date": "2026-10-18",
+        "start_followers": 18360940,
+        "end_followers": 18360940,
+        "growth": 0,
+        "growth_percentage": 0.0,
+        "direction": "no_change",
+        "filter_applied": false
+    },
+    "suggestions": [
+        "Carousel posts have a higher average like count than video posts in the scraped sample. Consider testing more carousel content.",
+        "There is not enough data to identify a reliable best posting time. At least 5 posts are needed for a posting-time recommendation.",
+        "The highest observed video interaction rate was 36.99%."
+    ],
+    "llm_insights": [
+        {
+            "type": "video_performance",
+            "insight": "Your top analyzed video 'Signed to God' achieved the highest observed video interaction rate in the sample.",
+            "evidence": {
+                "short_code": "DeCwpvapAHn",
+                "post_name": "Signed to God",
+                "interaction_rate": 36.99,
+                "views": 6025086,
+                "likes": 2098579,
+                "comments": 129998
+            }
+        },
+        {
+            "type": "follower_growth",
+            "insight": "Follower growth can be used to evaluate whether future content strategies are associated with account growth, but the available data does not establish the cause of growth.",
+            "evidence": {
+                "start_date": "2026-10-12",
+                "end_date": "2026-10-18",
+                "start_followers": 18360940,
+                "end_followers": 18360940,
+                "growth": 0,
+                "growth_percentage": 0.0,
+                "direction": "no_change"
+            }
+        },
+        {
+            "type": "top_post",
+            "insight": "The highest-liked analyzed post 'Eyes On Me' received 5828263 likes and 181288 comments.",
+            "evidence": {
+                "short_code": "DX8f8QulAKn",
+                "post_name": "Eyes On Me",
+                "likes": 5828263,
+                "comments": 181288,
+                "views": null
+            }
+        }
+    ]
+}

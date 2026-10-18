@@ -1,0 +1,52 @@
+# ============================================================
+# Instagram AI Growth Report — Python Dependencies
+# ============================================================
+#
+# How to install everything:
+#   pip install -r requirements.txt
+#
+# What each package does is explained below.
+# ============================================================
+
+
+# --- Instagram Data Collection ---
+# Apify is a cloud service that collects Instagram profile
+# and post data for us. Instagram doesn't allow direct scraping,
+# so we use Apify as a middle layer.
+apify-client
+
+
+# --- AI / Large Language Models ---
+
+# Google Gemini AI SDK — used to send the analytics report
+# to Gemini and get back a personalized growth strategy.
+google-genai
+
+# Requests — a simple HTTP library used to communicate with
+# Ollama (the local AI model running on your computer).
+# Ollama generates human-readable names for Instagram posts.
+requests
+
+
+# --- Web Dashboard ---
+# Streamlit turns Python code into an interactive web app.
+# This is the dashboard you open in your browser.
+streamlit
+
+
+# --- Data Visualization ---
+# Matplotlib is used to draw all the charts:
+# content distribution, average likes, posting time, top posts.
+matplotlib
+
+
+# --- Environment Variables ---
+# python-dotenv reads your secret API keys from the .env file
+# so you never have to hard-code them in your source code.
+python-dotenv
+
+
+# --- MCP Server (Experimental) ---
+# FastMCP is a lightweight framework for building AI tool servers.
+# Used in the mcp_server module for future AI integration features.
+mcp
