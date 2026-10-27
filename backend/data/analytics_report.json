@@ -1,33 +1,136 @@
 {
     "profile": {
-        "username": "arman.dxp",
-        "followers": 141,
-        "following": 197,
-        "total_posts": 18,
-        "verified": false,
-        "private": true,
-        "profile_pic_url": "https://scontent-lga3-2.cdninstagram.com/v/t51.82787-19/727940276_17983153464008545_6586975022317152761_n.jpg?stp=dst-jpg_s320x320_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=scontent-lga3-2.cdninstagram.com&_nc_cat=101&_nc_oc=Q6cZ2gH_MPY3jNAs_T6nuoSF8o1qwi2hRgjKuyboApWETSuOnqGvIYRzKq8mEOMMmrkdxmqiER9pzESUQ0_0Qv9oLhV-&_nc_ohc=hC3Va7HtIF0Q7kNvwHgyshY&_nc_gid=2WZMnQZGG0xkl_3mcO3IqQ&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AQM5tUKR7BYJaXwiECd6S1dLB_qW-I5jkalSzV8buXBfWA&oe=6ADAA655&_nc_sid=8b3546",
-        "full_name": "𝓐𝓻𝓶𝓪𝓷",
-        "biography": "This is the way"
+        "username": "harish.vibes_",
+        "followers": 226662,
+        "following": 380,
+        "total_posts": 239,
+        "verified": true,
+        "private": false,
+        "profile_pic_url": "https://scontent-man2-1.cdninstagram.com/v/t51.82787-19/520443577_18072096491480350_5266618840805477631_n.jpg?stp=dst-jpg_s320x320_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby44NTMuYzIifQ&_nc_ht=scontent-man2-1.cdninstagram.com&_nc_cat=1&_nc_oc=Q6cZ2gEvhLiXXWA4N3FshnLpYeK681E3xObW_cIQslb3sekSXTJBqnRsd_bs7vdCuLgYfMBa5oenKMbeOpY-Tr5jphAY&_nc_ohc=kRd3YR8VKxUQ7kNvwH23DZw&_nc_gid=jIawRCw23L-YRpxHBNTV9A&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AQM_Tv9Dji-4-973_r-BkC5hdcOr9sF3YiR6S0WwLJY6aA&oe=6AE640B2&_nc_sid=8b3546",
+        "full_name": "HARISH Terli",
+        "biography": "🧠Ai Tools | Career Growth| Personal Growth \n🎯 My videos will help you get 1% Better \nEvery day 📈\n📩collab:harishwithyou3@gmail.com"
     },
     "metrics": {
-        "total_interactions": 0,
-        "average_interactions_per_post": 0.0,
-        "total_comments": 0,
-        "average_comments": 0.0,
-        "total_likes": 0,
-        "average_likes": 0,
+        "total_interactions": 32054,
+        "average_interactions_per_post": 2136.9333333333334,
+        "total_comments": 15341,
+        "average_comments": 1022.7333333333333,
+        "total_likes": 16713,
+        "average_likes": 1114.2,
         "total_video_views": 0,
         "average_video_views": 0
     },
-    "top_posts": [],
-    "posting_analysis": [],
-    "content_analysis": [],
+    "top_posts": [
+        {
+            "short_code": "DelPxipCOw3",
+            "post_name": "Grateful Inviting Me",
+            "caption": "Grateful to @peoplemediafactory for inviting me to the premiere of #GarividiLakshmi! ❤️🎬\n\nLoved the movie, especially the beautiful folk songs and cultural touch. It was a pleasure meeting @siddu_buoy Anna❤️, the cast @officialkayalanandhi , and the team behind the film. ✨\n\nThank you for the wonderful experience! 🙏❤️\n\n#GarividiLakshmi #PeopleMediaFactory TeluguCinem",
+            "likes": 4420,
+            "comments": 9,
+            "views": null,
+            "url": "https://www.instagram.com/p/DelPxipCOw3/",
+            "timestamp": "2026-10-17T04:26:15.000Z"
+        },
+        {
+            "short_code": "DemPXmIoIjE",
+            "post_name": "Communication One Most",
+            "caption": "Communication is one of the most important skills you can develop. Comment any emoji to get the link \n\n#trending #communication #english \n[Commuincation , English, Students]",
+            "likes": 2190,
+            "comments": 2564,
+            "views": null,
+            "url": "https://www.instagram.com/p/DemPXmIoIjE/",
+            "timestamp": "2026-10-17T13:43:31.000Z"
+        },
+        {
+            "short_code": "Det1adROeTf",
+            "post_name": "Comment Microsoft Get",
+            "caption": "Comment “Microsoft ” to get details, save & share this video with your Friends\n\n#trending #students #ai\n[trending , Students, Gen Ai , Agentic Ai]",
+            "likes": 1665,
+            "comments": 1791,
+            "views": null,
+            "url": "https://www.instagram.com/p/Det1adROeTf/",
+            "timestamp": "2026-10-20T12:30:59.000Z"
+        }
+    ],
+    "posting_analysis": [
+        {
+            "hour": 7,
+            "posts": 3,
+            "average_likes": 628.6666666666666
+        },
+        {
+            "hour": 5,
+            "posts": 1,
+            "average_likes": 1349.0
+        },
+        {
+            "hour": 13,
+            "posts": 2,
+            "average_likes": 1438.0
+        },
+        {
+            "hour": 4,
+            "posts": 1,
+            "average_likes": 4420.0
+        },
+        {
+            "hour": 12,
+            "posts": 6,
+            "average_likes": 731.3333333333334
+        },
+        {
+            "hour": 15,
+            "posts": 1,
+            "average_likes": 134.0
+        },
+        {
+            "hour": 14,
+            "posts": 1,
+            "average_likes": 1660.0
+        }
+    ],
+    "content_analysis": [
+        {
+            "content_type": "carousel_container",
+            "posts": 4,
+            "average_likes": 1894.0
+        },
+        {
+            "content_type": "clips",
+            "posts": 11,
+            "average_likes": 830.6363636363636
+        }
+    ],
     "video_analysis": [],
     "growth": {
         "status": "insufficient_data",
         "reason": "At least two follower snapshots are required."
     },
-    "suggestions": [],
-    "llm_insights": []
+    "suggestions": [
+        "Carousel posts have a higher average like count than video posts in the scraped sample. Consider testing more carousel content.",
+        "The highest observed average like count among posting times with at least 5 posts occurred at 12:00.",
+        "Consider testing this posting window with future posts and comparing the results."
+    ],
+    "llm_insights": [
+        {
+            "type": "posting_time",
+            "insight": "12:00 has the highest average likes among posting hours with at least 5 analyzed posts.",
+            "evidence": {
+                "hour": 12,
+                "posts": 6,
+                "average_likes": 731.33
+            }
+        },
+        {
+            "type": "top_post",
+            "insight": "The highest-liked analyzed post 'Grateful Inviting Me' received 4420 likes and 9 comments.",
+            "evidence": {
+                "short_code": "DelPxipCOw3",
+                "post_name": "Grateful Inviting Me",
+                "likes": 4420,
+                "comments": 9,
+                "views": null
+            }
+        }
+    ]
 }
