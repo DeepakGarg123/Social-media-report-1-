@@ -60,9 +60,10 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
                     with open(data_file, "w", encoding="utf-8") as f:
                         json.dump(items, f, indent=4)
 
-                    # Always record today's follower snapshot even from cache
-                    _save_follower_snapshot(profile, history_file)
-
+                    # NOTE: Do NOT save a snapshot from cache — follower
+                    # counts in cache files are stale (from the last live
+                    # scrape). Saving them would pollute the history with
+                    # the old value and break growth calculations.
                     print(f"Loaded profile '{username}' from local cache (Instant).")
                     logger.info(f"Loaded cached profile data for: {username}")
                     return profile
@@ -84,9 +85,8 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
                     with open(cache_data_file, "w", encoding="utf-8") as f:
                         json.dump(items, f, indent=4)
 
-                    # Always record today's follower snapshot even from cache
-                    _save_follower_snapshot(profile, history_file)
-
+                    # NOTE: Do NOT save a snapshot from existing files —
+                    # same reason as above: data is stale, not live.
                     print(f"Loaded existing profile '{username}' data (Instant).")
                     logger.info(f"Loaded existing profile file for: {username}")
                     return profile
@@ -190,7 +190,15 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
 
 
 def _save_follower_snapshot(profile, history_file):
-    """Save today's follower count to profile_history.json if not already recorded."""
+    """
+    Upsert today's live follower count into profile_history.json.
+
+    ONLY called after a successful live Apify scrape — never from cache.
+    Uses upsert logic: if a snapshot for today already exists for this user
+    (e.g. user ran the report twice in one day) it updates the count with
+    the freshest value instead of skipping it, so the number is always
+    accurate when growth is calculated.
+    """
     try:
         with open(history_file, "r", encoding="utf-8") as f:
             profile_history = json.load(f)
@@ -204,26 +212,34 @@ def _save_follower_snapshot(profile, history_file):
     username = profile.get("username")
     followers = profile.get("followersCount")
 
-    existing_snapshot = any(
-        item.get("username") == username
-        and item.get("date") == today
-        for item in profile_history
-    )
+    # Upsert: update today's entry if it already exists, otherwise append.
+    updated = False
+    for item in profile_history:
+        if item.get("username") == username and item.get("date") == today:
+            if item["followers"] != followers:
+                item["followers"] = followers
+                logger.info(
+                    f"Follower snapshot updated for {username} on {today}: {followers}"
+                )
+                print(
+                    f"Follower snapshot updated for today: {followers} followers."
+                )
+            else:
+                print("Follower snapshot for today already up-to-date.")
+            updated = True
+            break
 
-    if not existing_snapshot:
-        snapshot = {
+    if not updated:
+        profile_history.append({
             "username": username,
             "date": today,
             "followers": followers
-        }
-        profile_history.append(snapshot)
-        logger.info(f"Follower snapshot saved for {username}: {followers}")
-        print("New follower history snapshot saved.")
-    else:
-        print("Follower snapshot for today already exists.")
+        })
+        logger.info(f"New follower snapshot saved for {username}: {followers}")
+        print(f"New follower snapshot saved: {followers} followers.")
 
     try:
         with open(history_file, "w", encoding="utf-8") as f:
             json.dump(profile_history, f, indent=4)
     except Exception as e:
-        logger.error(f"Could not write history file: {e}")
+        logger.error(f"Could not write history file: {e}")

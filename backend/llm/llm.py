@@ -1,8 +1,8 @@
 import json
 import os
 
+import requests
 from dotenv import load_dotenv
-from google import genai
 
 from backend.llm.recommendation_builder import build_recommendations
 
@@ -10,12 +10,24 @@ load_dotenv()
 
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-if not gemini_api_key:
-    raise ValueError("GEMINI_API_KEY not found in .env file")
+# Gemini client — initialised only when an API key is available.
+# If the key is missing we skip Gemini entirely and rely on Ollama.
+_gemini_client = None
+if gemini_api_key:
+    try:
+        from google import genai as _genai
+        _gemini_client = _genai.Client(api_key=gemini_api_key)
+    except Exception as _e:
+        print(f"[LLM] Warning: could not initialise Gemini client: {_e}")
+else:
+    print("[LLM] Warning: GEMINI_API_KEY not set — will use Ollama directly.")
 
-client = genai.Client(
-    api_key=gemini_api_key
-)
+# --------------------------------------------------
+# OLLAMA CONFIGURATION
+# --------------------------------------------------
+
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
 
 # --------------------------------------------------
@@ -155,12 +167,18 @@ CANDIDATE_MODELS = [
     "gemini-3.5-flash-lite"
 ]
 
-def generate_llm_response(prompt):
+
+def _generate_gemini_response(prompt):
+    """Try each Gemini candidate model in order. Returns text or raises."""
+    if not _gemini_client:
+        raise RuntimeError("Gemini client is not initialised (no API key).")
+
     last_error = None
 
     for model_name in CANDIDATE_MODELS:
         try:
-            response = client.models.generate_content(
+            print(f"[LLM] Trying Gemini model: {model_name} ...")
+            response = _gemini_client.models.generate_content(
                 model=model_name,
                 contents=prompt,
                 config={
@@ -170,14 +188,96 @@ def generate_llm_response(prompt):
             )
 
             if response and response.text:
+                print(f"[LLM] Gemini succeeded with model: {model_name}")
                 return response.text.strip()
+
         except Exception as error:
+            print(f"[LLM] Gemini model {model_name} failed: {error}")
             last_error = error
             continue
 
     raise RuntimeError(
-        f"Gemini request failed across models {CANDIDATE_MODELS}: {last_error}"
+        f"Gemini failed across all models {CANDIDATE_MODELS}: {last_error}"
     )
+
+
+# --------------------------------------------------
+# SEND REQUEST TO OLLAMA (LOCAL FALLBACK)
+# --------------------------------------------------
+
+def _generate_ollama_response(prompt):
+    """Send the prompt to a locally-running Ollama instance."""
+    print(f"[LLM] Sending request to Ollama ({OLLAMA_MODEL}) at {OLLAMA_URL} ...")
+
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+        }
+    }
+
+    response = requests.post(
+        OLLAMA_URL,
+        json=payload,
+        timeout=300   # Ollama can be slow on first load — give it 5 min
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Ollama returned HTTP {response.status_code}: {response.text[:200]}"
+        )
+
+    result = response.json()
+    text = result.get("response", "").strip()
+
+    if not text:
+        raise RuntimeError("Ollama returned an empty response.")
+
+    print("[LLM] Ollama succeeded.")
+    return text
+
+
+# --------------------------------------------------
+# HYBRID: GEMINI FIRST → OLLAMA FALLBACK
+# --------------------------------------------------
+
+def generate_llm_response(prompt):
+    """
+    Primary:  Try every Gemini model in sequence.
+    Fallback: If all Gemini attempts fail (quota, rate-limit, network, etc.),
+              hand over to a locally-running Ollama instance.
+
+    The same prompt is used for both, so output format/style stays consistent.
+    The supported_recommendations data is always built deterministically by
+    recommendation_builder.py — neither model changes that logic.
+    """
+    # ── Stage 1: Gemini ───────────────────────────────────────────────────
+    gemini_error = None
+    if _gemini_client:
+        try:
+            return _generate_gemini_response(prompt)
+        except Exception as error:
+            gemini_error = error
+            print(
+                f"\n[LLM] All Gemini models exhausted — "
+                f"handing over to Ollama fallback.\n"
+                f"      Gemini error: {gemini_error}\n"
+            )
+    else:
+        print("[LLM] Gemini client unavailable — going straight to Ollama.")
+
+    # ── Stage 2: Ollama ───────────────────────────────────────────────────
+    try:
+        return _generate_ollama_response(prompt)
+    except Exception as ollama_error:
+        raise RuntimeError(
+            f"Both Gemini and Ollama failed.\n"
+            f"  Gemini error : {gemini_error}\n"
+            f"  Ollama error : {ollama_error}"
+        )
 
 
 # --------------------------------------------------
@@ -323,7 +423,7 @@ def generate_recommendations(force_refresh=False):
     )
 
     print(
-        "Sending analytics to Gemini..."
+        "Sending analytics to AI engine (Gemini → Ollama fallback)..."
     )
 
 
