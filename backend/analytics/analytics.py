@@ -54,9 +54,10 @@ def generate_analytics(start_month=None, end_month=None):
 
     report["profile"] = {
         "username": profile["username"],
-        "followers": profile["followersCount"],
-        "following": profile["followsCount"],
-        "total_posts": profile["postsCount"],
+        "followers": profile.get("followersCount", 0),
+        "following": profile.get("followsCount", 0),
+        "total_posts": profile.get("postsCount"),
+        "analyzed_posts_count": len(profile.get("latestPosts", [])),
         "verified": profile["verified"],
         "private": profile["private"],
         "profile_pic_url": profile.get("profilePicUrlHD") or profile.get("profilePicUrl"),
@@ -293,15 +294,15 @@ def generate_analytics(start_month=None, end_month=None):
     )
 
     print(
-        f"Followers: {profile['followersCount']}"
+        f"Followers: {profile.get('followersCount', 0)}"
     )
 
     print(
-        f"Following: {profile['followsCount']}"
+        f"Following: {profile.get('followsCount', 0)}"
     )
 
     print(
-        f"Total posts: {profile['postsCount']}"
+        f"Total posts: {profile.get('postsCount') or len(profile.get('latestPosts', []))}"
     )
 
     print(

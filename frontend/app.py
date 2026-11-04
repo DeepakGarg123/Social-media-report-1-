@@ -320,24 +320,23 @@ if st.session_state.analysis_done:
 
     profile_pic_b64 = st.session_state.get(pic_cache_key)
 
+
     if profile_pic_b64 or profile_pic_url:
         col_avatar, col_metrics = st.columns([1, 4])
 
         with col_avatar:
             if profile_pic_b64:
-                # Embed as data URI — never blocked by CDN
                 st.markdown(
                     f"""
                     <div style="display: flex; justify-content: center; align-items: center; padding-top: 5px;">
                         <img src="{profile_pic_b64}" alt="{current_username}"
-                             style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
+                            style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
                                     border: 3px solid #E1306C; box-shadow: 0 4px 14px rgba(225, 48, 108, 0.25);" />
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
             else:
-                # Fallback: show a placeholder avatar with initials
                 initials = (full_name or current_username or "?")[:2].upper()
                 st.markdown(
                     f"""
@@ -353,58 +352,57 @@ if st.session_state.analysis_done:
                     unsafe_allow_html=True
                 )
 
-        with col_metrics:
-            if full_name:
-                st.markdown(f"**{full_name}**")
+    else:
+        col_metrics = st.container()
 
-            col1, col2, col3, col4 = st.columns(4)
 
-            with col1:
-                st.metric(
-                    "Username",
-                    current_username
-                )
+    with col_metrics:
+        if full_name:
+            st.markdown(f"**{full_name}**")
 
-            with col2:
-                followers = profile.get(
-                    "followersCount",
-                    0
-                )
-                st.metric(
-                    "Followers",
-                    f"{followers:,}"
-                )
+        col1, col2, col3, col4, col5 = st.columns(5)
 
-            with col3:
-                following = profile.get(
-                    "followsCount"
-                )
-                st.metric(
-                    "Following",
-                    f"{following:,}" if following is not None else "N/A"
-                )
+        with col1:
+            st.metric("Username", current_username)
 
-            with col4:
-                posts = profile.get(
-                    "postsCount",
-                    0
-                )
-                st.metric(
-                    "Posts",
-                    f"{posts:,}"
-                )
-
-            verified = profile.get(
-                "verified",
-                False
-            )
-            st.write(
-                "Verified:",
-                "Yes ✅" if verified else "No"
+        with col2:
+            followers = profile.get("followersCount")
+            st.metric(
+                "Followers",
+                f"{followers:,}" if followers is not None else "N/A"
             )
 
-            if biography:
-                st.caption(biography)
+        with col3:
+            following = profile.get("followsCount")
+            st.metric(
+                "Following",
+                f"{following:,}" if following is not None else "N/A"
+            )
+
+        with col4:
+            posts = profile.get("postsCount")
+            st.metric(
+                "Total Posts",
+                f"{posts:,}" if posts is not None else "N/A"
+            )
+
+        with col5:
+            analyzed_posts = len(profile.get("latestPosts") or [])
+            st.metric(
+                "Posts Analyzed",
+                f"{analyzed_posts:,}"
+            )
+
+    verified = profile.get("verified", False)
+
+    st.write(
+        "Verified:",
+        "Yes ✅" if verified else "No"
+    )
+
+    if biography:
+        st.caption(biography)
+
 
     else:
         col1, col2, col3, col4 = st.columns(4)
@@ -424,24 +422,26 @@ if st.session_state.analysis_done:
                 "Followers",
                 f"{followers:,}"
             )
-
         with col3:
-            following = profile.get(
-                "followsCount"
-            )
+            following = profile.get("followsCount")
+
             st.metric(
                 "Following",
                 f"{following:,}" if following is not None else "N/A"
             )
 
         with col4:
-            posts = profile.get(
-                "postsCount",
-                0
-            )
+            posts = profile.get("postsCount")
+            analyzed_posts = len(profile.get("latestPosts") or [])
+
             st.metric(
-                "Posts",
-                f"{posts:,}"
+                "Total Posts",
+                f"{posts:,}" if posts is not None else "N/A"
+            )
+
+            st.metric(
+                "Posts Analyzed",
+                f"{analyzed_posts:,}"
             )
 
         verified = profile.get(

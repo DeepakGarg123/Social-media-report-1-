@@ -54,19 +54,26 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
 
                 if profile_items and isinstance(profile_items, list):
                     profile = profile_items[0]
-                    # Update main data files for analytics engine
-                    with open(profile_file, "w", encoding="utf-8") as f:
-                        json.dump(profile_items, f, indent=4)
-                    with open(data_file, "w", encoding="utf-8") as f:
-                        json.dump(items, f, indent=4)
+                    # Skip cached error responses — force a live scrape.
+                    if profile.get("error"):
+                        logger.warning(
+                            f"Cached profile for {username} contains an error response "
+                            f"({profile.get('error')}). Forcing live scrape."
+                        )
+                    else:
+                        # Update main data files for analytics engine
+                        with open(profile_file, "w", encoding="utf-8") as f:
+                            json.dump(profile_items, f, indent=4)
+                        with open(data_file, "w", encoding="utf-8") as f:
+                            json.dump(items, f, indent=4)
 
-                    # NOTE: Do NOT save a snapshot from cache — follower
-                    # counts in cache files are stale (from the last live
-                    # scrape). Saving them would pollute the history with
-                    # the old value and break growth calculations.
-                    print(f"Loaded profile '{username}' from local cache (Instant).")
-                    logger.info(f"Loaded cached profile data for: {username}")
-                    return profile
+                        # NOTE: Do NOT save a snapshot from cache — follower
+                        # counts in cache files are stale (from the last live
+                        # scrape). Saving them would pollute the history with
+                        # the old value and break growth calculations.
+                        print(f"Loaded profile '{username}' from local cache (Instant).")
+                        logger.info(f"Loaded cached profile data for: {username}")
+                        return profile
             except Exception as e:
                 logger.warning(f"Failed to read cache for {username}: {e}")
 
@@ -76,20 +83,27 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
                 with open(profile_file, "r", encoding="utf-8") as f:
                     existing_profiles = json.load(f)
                 if existing_profiles and existing_profiles[0].get("username", "").lower() == clean_username:
-                    with open(data_file, "r", encoding="utf-8") as f:
-                        items = json.load(f)
                     profile = existing_profiles[0]
-                    # Save to cache dir for future lookup
-                    with open(cache_profile_file, "w", encoding="utf-8") as f:
-                        json.dump(existing_profiles, f, indent=4)
-                    with open(cache_data_file, "w", encoding="utf-8") as f:
-                        json.dump(items, f, indent=4)
+                    # Skip errored profiles — force a live scrape.
+                    if profile.get("error"):
+                        logger.warning(
+                            f"Existing profile file for {username} contains an error response. "
+                            "Forcing live scrape."
+                        )
+                    else:
+                        with open(data_file, "r", encoding="utf-8") as f:
+                            items = json.load(f)
+                        # Save to cache dir for future lookup
+                        with open(cache_profile_file, "w", encoding="utf-8") as f:
+                            json.dump(existing_profiles, f, indent=4)
+                        with open(cache_data_file, "w", encoding="utf-8") as f:
+                            json.dump(items, f, indent=4)
 
-                    # NOTE: Do NOT save a snapshot from existing files —
-                    # same reason as above: data is stale, not live.
-                    print(f"Loaded existing profile '{username}' data (Instant).")
-                    logger.info(f"Loaded existing profile file for: {username}")
-                    return profile
+                        # NOTE: Do NOT save a snapshot from existing files —
+                        # same reason as above: data is stale, not live.
+                        print(f"Loaded existing profile '{username}' data (Instant).")
+                        logger.info(f"Loaded existing profile file for: {username}")
+                        return profile
             except Exception as e:
                 logger.warning(f"Failed to check existing data files: {e}")
 
@@ -154,7 +168,21 @@ def scrape_instagram(instagram_url, force_refresh=False, max_posts=15):
 
     profile = profile_items[0]
 
-    total_posts = profile.get("postsCount", 0)
+    # Detect error responses returned by the Apify profile scraper
+    # e.g. {"error": "not_found", "errorDescription": "Profile does not exist"}.
+    # These must NOT be saved to disk or treated as valid profiles.
+    if profile.get("error"):
+        error_desc = profile.get("errorDescription", "unknown error")
+        print(
+            f"Apify profile scraper returned an error for '{username}': {error_desc}"
+        )
+        logger.error(
+            f"Apify profile scraper error for {username}: "
+            f"{profile.get('error')} — {error_desc}"
+        )
+        return None
+
+    total_posts = profile.get("postsCount")
     print(f"Total posts on profile: {total_posts}")
     print(
         f"Posts collected for analysis: {len(items)}"

@@ -69,12 +69,12 @@ print(
 
 print(
     "Followers:",
-    profile["followersCount"]
+    profile.get("followersCount", 0)
 )
 
 print(
     "Posts:",
-    profile["postsCount"]
+    profile.get("postsCount") or len(profile.get("latestPosts", []))
 )
 
 print(
