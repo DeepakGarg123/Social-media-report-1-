@@ -1,4 +1,3 @@
-
 from langchain_core.documents import Document
 def create_profile_document(report):
     profile = report["profile"]
@@ -77,5 +76,20 @@ def create_report_documents(report):
     documents.extend(top_posts_documents)
 
     return documents
+
+def create_suggestions_document(report):
+    suggestions = report["suggestions"]
+
+    content = "Instagram Account Suggestions:\n"
+
+    for index, suggestion in enumerate(suggestions, start=1):
+        content += f"\nSuggestion {index}: {suggestion}"
+
+    document = Document(
+        page_content=content,
+        metadata={"section": "suggestions"}
+    )
+
+    return document
 
 
