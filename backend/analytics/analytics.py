@@ -1,13 +1,35 @@
+
 import json
+import concurrent.futures
+
 from pathlib import Path
 from datetime import datetime
-from backend.logs.logs import logger
-from backend.llm.post_namer import generate_post_name
 from collections import defaultdict
 
+from backend.logs.logs import logger
+from backend.llm.post_namer import generate_post_name
 
-def generate_analytics(start_month=None, end_month=None):
-    """Generate and save the Instagram analytics report."""
+
+def generate_analytics(
+    profile,
+    data,
+    profile_history=None,
+    start_month=None,
+    end_month=None,
+    save_report=False
+):
+    """Generate an Instagram analytics report from supplied profile and posts."""
+
+    if not isinstance(profile, dict) or not profile:
+        raise ValueError("A valid Instagram profile is required.")
+
+    if not isinstance(data, list):
+        raise ValueError("Instagram posts data must be a list.")
+
+    username = profile.get("username", "").lower()
+
+    if not username:
+        raise ValueError("Instagram username is missing from the profile.")
 
     report = {
         "profile": {},
@@ -21,34 +43,49 @@ def generate_analytics(start_month=None, end_month=None):
         "llm_insights": []
     }
 
-
     # -------------------- Load Data --------------------
 
-    data_file = Path("backend/data/instagram_data.json")
-
-    with open(
-        data_file,
-        "r",
-        encoding="utf-8"
-    ) as f:
-        data = json.load(f)
-
-
-    profile_file = Path("backend/data/instagram_profile.json")
-
-    with open(
-        profile_file,
-        "r",
-        encoding="utf-8"
-    ) as f:
-        profile_data = json.load(f)
-
-    profile = profile_data[0]
-
     logger.info(
-        f"Analytics processing started for: {profile['username']}"
+        f"Analytics processing started for: {username}"
     )
 
+    # -------------------- Load Profile History --------------------
+
+    if profile_history is None:
+
+        history_files = [
+            Path("backend/data/profile_history.json"),
+            Path("backend/data/history") / f"{username}_history.json"
+        ]
+
+        history_by_date = {}
+
+        for history_file in history_files:
+
+            if history_file.exists():
+
+                try:
+                    with open(
+                        history_file,
+                        "r",
+                        encoding="utf-8"
+                    ) as f:
+                        saved_history = json.load(f)
+
+                    for snapshot in saved_history:
+
+                        if (
+                            snapshot.get("username", "").lower() == username
+                            and snapshot.get("date")
+                        ):
+                            history_by_date[snapshot["date"]] = snapshot
+
+                except Exception as error:
+                    logger.warning(
+                        f"Could not read history file {history_file}: {error}"
+                    )
+
+        profile_history = list(history_by_date.values())
 
     # -------------------- Profile Information --------------------
 
@@ -58,41 +95,29 @@ def generate_analytics(start_month=None, end_month=None):
         "following": profile.get("followsCount", 0),
         "total_posts": profile.get("postsCount"),
         "analyzed_posts_count": len(profile.get("latestPosts", [])),
-        "verified": profile["verified"],
-        "private": profile["private"],
-        "profile_pic_url": profile.get("profilePicUrlHD") or profile.get("profilePicUrl"),
+        "verified": profile.get("verified", False),
+        "private": profile.get("private", False),
+        "profile_pic_url": (
+            profile.get("profilePicUrlHD")
+            or profile.get("profilePicUrl")
+        ),
         "full_name": profile.get("fullName"),
         "biography": profile.get("biography")
     }
 
-
-    # -------------------- Profile History --------------------
-
-    history_file = Path("backend/data/profile_history.json")
-
-    with open(
-        history_file,
-        "r",
-        encoding="utf-8"
-    ) as f:
-        profile_history = json.load(f)
-
-
-    username = profile["username"]
+    # -------------------- Filter Profile History --------------------
 
     user_history = [
         snapshot
         for snapshot in profile_history
-        if snapshot.get("username") == username
+        if snapshot.get("username", "").lower() == username
     ]
-
 
     # -------------------- Follower Growth --------------------
 
     user_history.sort(
-        key=lambda item: item.get("date")
+        key=lambda item: item.get("date", "")
     )
-
 
     print("\nFollower Growth History:")
 
@@ -101,7 +126,6 @@ def generate_analytics(start_month=None, end_month=None):
             f"{snapshot.get('date')} -> "
             f"{snapshot.get('followers')} followers"
         )
-
 
     def calculate_growth(history, start_month=None, end_month=None):
 
@@ -181,12 +205,10 @@ def generate_analytics(start_month=None, end_month=None):
 
         return result
 
-
     # Default behavior:
     # Show growth across the complete available history.
 
     report["growth"] = calculate_growth(user_history)
-
 
     print("\nOverall follower growth:")
 
@@ -228,11 +250,7 @@ def generate_analytics(start_month=None, end_month=None):
             report["growth"]["reason"]
         )
 
-
     # -------------------- Optional Month Filter --------------------
-
-        # start_month is supplied as a function argument.
-        # end_month is supplied as a function argument.
 
     if start_month and end_month:
 
@@ -284,7 +302,6 @@ def generate_analytics(start_month=None, end_month=None):
                 filtered_growth["reason"]
             )
 
-
     # -------------------- Instagram Profile --------------------
 
     print("\nInstagram Profile:")
@@ -302,17 +319,17 @@ def generate_analytics(start_month=None, end_month=None):
     )
 
     print(
-        f"Total posts: {profile.get('postsCount') or len(profile.get('latestPosts', []))}"
+        f"Total posts: "
+        f"{profile.get('postsCount') or len(profile.get('latestPosts', []))}"
     )
 
     print(
-        f"Verified: {profile['verified']}"
+        f"Verified: {profile.get('verified', False)}"
     )
 
     print(
         f"Scraped posts analyzed: {len(data)}"
     )
-
 
     # -------------------- Basic Metrics --------------------
 
@@ -323,12 +340,10 @@ def generate_analytics(start_month=None, end_month=None):
         and post.get("likesCount") >= 0
     ]
 
-
     total_comments = sum(
-        post.get("commentsCount", 0)
+        post.get("commentsCount", 0) or 0
         for post in data
     )
-
 
     average_comments = (
         total_comments / len(data)
@@ -336,16 +351,13 @@ def generate_analytics(start_month=None, end_month=None):
         else 0
     )
 
-
     total_likes = sum(valid_likes)
-
 
     average_likes = (
         total_likes / len(valid_likes)
         if valid_likes
         else 0
     )
-
 
     # -------------------- Engagement Metrics --------------------
 
@@ -354,13 +366,11 @@ def generate_analytics(start_month=None, end_month=None):
         total_comments
     )
 
-
     average_interactions = (
         total_interactions / len(data)
         if data
         else 0
     )
-
 
     print(
         f"Total interactions: {total_interactions}"
@@ -370,7 +380,6 @@ def generate_analytics(start_month=None, end_month=None):
         f"Average interactions per post: {average_interactions}"
     )
 
-
     video_views = [
         post.get("videoViewCount")
         for post in data
@@ -378,16 +387,13 @@ def generate_analytics(start_month=None, end_month=None):
         and post.get("videoViewCount") >= 0
     ]
 
-
     total_video_views = sum(video_views)
-
 
     average_video_views = (
         total_video_views / len(video_views)
         if video_views
         else 0
     )
-
 
     report["metrics"] = {
         "total_interactions": total_interactions,
@@ -399,7 +405,6 @@ def generate_analytics(start_month=None, end_month=None):
         "total_video_views": total_video_views,
         "average_video_views": average_video_views
     }
-
 
     print(
         f"Total comments: {total_comments}"
@@ -425,7 +430,6 @@ def generate_analytics(start_month=None, end_month=None):
         f"Average video views: {average_video_views}"
     )
 
-
     # -------------------- Best Performing Post --------------------
 
     posts_with_likes = [
@@ -434,7 +438,6 @@ def generate_analytics(start_month=None, end_month=None):
         if post.get("likesCount") is not None
         and post.get("likesCount") >= 0
     ]
-
 
     if posts_with_likes:
 
@@ -465,7 +468,6 @@ def generate_analytics(start_month=None, end_month=None):
             f"Timestamp: {best_post.get('timestamp')}"
         )
 
-
     # -------------------- Top Performing Posts --------------------
 
     top_posts = sorted(
@@ -474,16 +476,13 @@ def generate_analytics(start_month=None, end_month=None):
         reverse=True
     )[:3]
 
-
     report["top_posts"] = []
-
-
-    import concurrent.futures
 
     def _resolve_post_name(p):
         try:
             name = generate_post_name(p)
             return name if name else "Instagram Post"
+
         except Exception as error:
             logger.error(
                 f"Post name generation failed for "
@@ -492,13 +491,22 @@ def generate_analytics(start_month=None, end_month=None):
             return "Instagram Post"
 
     if top_posts:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(top_posts))) as executor:
-            resolved_names = list(executor.map(_resolve_post_name, top_posts))
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(3, len(top_posts))
+        ) as executor:
+
+            resolved_names = list(
+                executor.map(_resolve_post_name, top_posts)
+            )
+
     else:
         resolved_names = []
 
     for post, post_name in zip(top_posts, resolved_names):
+
         caption = post.get("caption")
+
         if caption:
             caption = caption.strip()
 
@@ -513,9 +521,7 @@ def generate_analytics(start_month=None, end_month=None):
             "timestamp": post.get("timestamp")
         })
 
-
     print("\nTop Performing Posts:")
-
 
     for index, post in enumerate(
         report["top_posts"],
@@ -546,7 +552,6 @@ def generate_analytics(start_month=None, end_month=None):
             f"URL: {post.get('url')}"
         )
 
-
     # -------------------- Post Details --------------------
 
     for post in data:
@@ -554,16 +559,12 @@ def generate_analytics(start_month=None, end_month=None):
         product_type = post.get("productType")
 
         if product_type:
-
             post_type = product_type.replace(
                 "_",
                 " "
             ).title()
-
         else:
-
             post_type = "Unknown"
-
 
         print("\n--------------------")
 
@@ -595,11 +596,9 @@ def generate_analytics(start_month=None, end_month=None):
             f"Content type: {product_type}"
         )
 
-
     # -------------------- Posting Time Analysis --------------------
 
     hourly_likes = defaultdict(list)
-
 
     for post in data:
 
@@ -626,9 +625,7 @@ def generate_analytics(start_month=None, end_month=None):
 
             hourly_likes[hour].append(likes)
 
-
     print("\nHourly likes:")
-
 
     for hour, likes in hourly_likes.items():
 
@@ -640,9 +637,7 @@ def generate_analytics(start_month=None, end_month=None):
             f"Average likes: {average}"
         )
 
-
     posting_analysis = []
-
 
     for hour, likes in hourly_likes.items():
 
@@ -654,14 +649,11 @@ def generate_analytics(start_month=None, end_month=None):
             "average_likes": average
         })
 
-
     report["posting_analysis"] = posting_analysis
-
 
     # -------------------- Content Type Analysis --------------------
 
     content_likes = defaultdict(list)
-
 
     for post in data:
 
@@ -679,9 +671,7 @@ def generate_analytics(start_month=None, end_month=None):
 
         content_likes[content_type].append(likes)
 
-
     print("\nContent type performance:")
-
 
     for content_type, likes in content_likes.items():
 
@@ -698,9 +688,7 @@ def generate_analytics(start_month=None, end_month=None):
             f"Average likes: {average}"
         )
 
-
     content_analysis = []
-
 
     for content_type, likes in content_likes.items():
 
@@ -712,14 +700,11 @@ def generate_analytics(start_month=None, end_month=None):
             "average_likes": average
         })
 
-
     report["content_analysis"] = content_analysis
-
 
     # -------------------- Detect All Content Types --------------------
 
     print("\nContent types found in scraped data:")
-
 
     all_content_types = set(
         post.get("productType")
@@ -727,26 +712,21 @@ def generate_analytics(start_month=None, end_month=None):
         if post.get("productType")
     )
 
-
     for content_type in sorted(all_content_types):
 
         print(
             f"- {content_type}"
         )
 
-
     # -------------------- Video Interaction Rate --------------------
 
     video_engagement = []
 
-
     for post in data:
 
         views = post.get("videoViewCount")
-
         likes = post.get("likesCount")
-
-        comments = post.get("commentsCount", 0)
+        comments = post.get("commentsCount", 0) or 0
 
         if likes is None or likes < 0:
             continue
@@ -762,9 +742,7 @@ def generate_analytics(start_month=None, end_month=None):
             (interaction_rate, post)
         )
 
-
     print("\nVideo Interaction Rate:")
-
 
     for interaction_rate, post in video_engagement:
 
@@ -773,9 +751,7 @@ def generate_analytics(start_month=None, end_month=None):
             f"Interaction rate: {interaction_rate:.2f}%"
         )
 
-
     video_analysis = []
-
 
     for interaction_rate, post in video_engagement:
 
@@ -790,16 +766,13 @@ def generate_analytics(start_month=None, end_month=None):
             )
         })
 
-
     report["video_analysis"] = video_analysis
-
 
     # ============================================================
     # LLM RELIABLE INSIGHTS
     # ============================================================
 
     llm_insights = []
-
 
     # -------------------- Reliable Posting Time Insight --------------------
 
@@ -808,7 +781,6 @@ def generate_analytics(start_month=None, end_month=None):
         for hour, likes in hourly_likes.items()
         if len(likes) >= 5
     }
-
 
     if reliable_hours:
 
@@ -842,7 +814,6 @@ def generate_analytics(start_month=None, end_month=None):
             }
         })
 
-
     # -------------------- Reliable Content Type Insight --------------------
 
     reliable_content_types = {
@@ -851,8 +822,10 @@ def generate_analytics(start_month=None, end_month=None):
         if len(likes) >= 5
     }
 
-
-    if "carousel_container" in reliable_content_types and "clips" in reliable_content_types:
+    if (
+        "carousel_container" in reliable_content_types
+        and "clips" in reliable_content_types
+    ):
 
         carousel_likes = reliable_content_types["carousel_container"]
         video_likes = reliable_content_types["clips"]
@@ -911,7 +884,6 @@ def generate_analytics(start_month=None, end_month=None):
                 }
             })
 
-
     # -------------------- Reliable Video Insight --------------------
 
     if video_engagement:
@@ -944,7 +916,6 @@ def generate_analytics(start_month=None, end_month=None):
             }
         })
 
-
     # -------------------- Follower Growth Insight --------------------
 
     if report["growth"].get("status") == "available":
@@ -968,7 +939,9 @@ def generate_analytics(start_month=None, end_month=None):
                 "direction": growth["direction"]
             }
         })
+
     if report["top_posts"]:
+
         top_post = report["top_posts"][0]
 
         llm_insights.append({
@@ -988,9 +961,7 @@ def generate_analytics(start_month=None, end_month=None):
             }
         })
 
-
     report["llm_insights"] = llm_insights
-
 
     print("\nLLM Reliable Insights:")
 
@@ -1008,25 +979,21 @@ def generate_analytics(start_month=None, end_month=None):
             f"Evidence: {insight['evidence']}"
         )
 
-
     # -------------------- Growth Suggestions --------------------
 
     print("\nGrowth Suggestions:")
 
     suggestions = []
 
-
     video_likes = content_likes.get(
         "clips",
         []
     )
 
-
     carousel_likes = content_likes.get(
         "carousel_container",
         []
     )
-
 
     video_avg = (
         sum(video_likes) / len(video_likes)
@@ -1034,13 +1001,11 @@ def generate_analytics(start_month=None, end_month=None):
         else 0
     )
 
-
     carousel_avg = (
         sum(carousel_likes) / len(carousel_likes)
         if carousel_likes
         else 0
     )
-
 
     if video_likes and carousel_likes:
 
@@ -1072,7 +1037,6 @@ def generate_analytics(start_month=None, end_month=None):
                 f"- {suggestion}"
             )
 
-
     # -------------------- Best Posting Time Suggestion --------------------
 
     if hourly_likes:
@@ -1083,7 +1047,6 @@ def generate_analytics(start_month=None, end_month=None):
             if len(likes) >= 5
         }
 
-
         if reliable_hours:
 
             best_hour = max(
@@ -1092,7 +1055,6 @@ def generate_analytics(start_month=None, end_month=None):
                 sum(reliable_hours[hour]) /
                 len(reliable_hours[hour])
             )
-
 
             suggestion = (
                 f"The highest observed average like count "
@@ -1106,7 +1068,6 @@ def generate_analytics(start_month=None, end_month=None):
                 f"- {suggestion}"
             )
 
-
             suggestion = (
                 "Consider testing this posting window with "
                 "future posts and comparing the results."
@@ -1117,7 +1078,6 @@ def generate_analytics(start_month=None, end_month=None):
             print(
                 f"- {suggestion}"
             )
-
 
         else:
 
@@ -1132,7 +1092,6 @@ def generate_analytics(start_month=None, end_month=None):
             print(
                 f"- {suggestion}"
             )
-
 
     # -------------------- Best Video Engagement Suggestion --------------------
 
@@ -1154,42 +1113,45 @@ def generate_analytics(start_month=None, end_month=None):
             f"- {suggestion}"
         )
 
-
     report["suggestions"] = suggestions
-
 
     # -------------------- Logging --------------------
 
     logger.info(
-        f"Analytics processing completed for: {profile['username']}"
+        f"Analytics processing completed for: {username}"
     )
 
+    # -------------------- Optional Report Saving --------------------
 
-    # -------------------- Final Report --------------------
+    if save_report:
 
-    report_file = Path(
-        "backend/data/analytics_report.json"
-    )
-
-
-    with open(
-        report_file,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        json.dump(
-            report,
-            f,
-            indent=4,
-            ensure_ascii=False
+        report_file = Path(
+            "backend/data/analytics_report.json"
         )
 
+        report_file.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        with open(
+            report_file,
+            "w",
+            encoding="utf-8"
+        ) as f:
+
+            json.dump(
+                report,
+                f,
+                indent=4,
+                ensure_ascii=False
+            )
+
+    # -------------------- Final Report --------------------
 
     print(
         "\n\n========== FINAL REPORT =========="
     )
-
 
     print(
         json.dumps(

@@ -1,13 +1,10 @@
 
-from backend.rag.vector_store import build_report_vector_store
 from backend.rag.query_router import route_query
 from backend.rag.answer_generator import generate_answer
 from backend.rag.sources import extract_sources
 
 
-def answer_report_question(report, question):
-
-    vector_store = build_report_vector_store(report)
+def answer_report_question(vector_store, question):
 
     sections = route_query(question)
 
