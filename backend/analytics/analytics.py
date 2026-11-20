@@ -1081,11 +1081,38 @@ def generate_analytics(
 
         else:
 
-            suggestion = (
-                "There is not enough data to identify a reliable "
-                "best posting time. At least 5 posts are needed "
-                "for a posting-time recommendation."
-            )
+            # Fallback: use all hours even if < 5 posts per hour,
+            # but flag it as preliminary data.
+            if hourly_likes:
+
+                best_hour_fallback = max(
+                    hourly_likes,
+                    key=lambda hour:
+                    sum(hourly_likes[hour]) /
+                    len(hourly_likes[hour])
+                )
+
+                best_avg_fallback = (
+                    sum(hourly_likes[best_hour_fallback]) /
+                    len(hourly_likes[best_hour_fallback])
+                )
+
+                suggestion = (
+                    f"Based on your current data, posts at "
+                    f"{best_hour_fallback:02d}:00 have the highest "
+                    f"average likes ({best_avg_fallback:,.0f}). "
+                    f"Note: this is based on limited data "
+                    f"(fewer than 5 posts per hour). Post more "
+                    f"consistently to get a more reliable recommendation."
+                )
+
+            else:
+
+                suggestion = (
+                    "There is not enough data to identify a "
+                    "best posting time yet. Start posting regularly "
+                    "so we can analyze your performance."
+                )
 
             suggestions.append(suggestion)
 
