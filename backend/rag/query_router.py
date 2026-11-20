@@ -31,40 +31,89 @@ def create_router_model():
 
 def route_query(question):
 
+    question_lower = question.lower().strip()
+
+    post_pattern = (
+        r"\b(which post|what post|highest post|top post|"
+        r"best post|most liked post|most commented post|"
+        r"highest performing post|top performing post|"
+        r"which reel|what reel|most liked reel|"
+        r"top reels|individual post|post received|"
+        r"posts received|posts with|post with)\b"
+    )
+
+    time_pattern = (
+        r"\b(hour|hours|time slot|posting time|best time|"
+        r"when should i post|weekday|weekdays|day of week|"
+        r"which day|posting schedule|posting frequency)\b"
+    )
+
+    content_pattern = (
+        r"\b(content type|content types|reels vs|"
+        r"reel vs|carousel|carousels|content format|"
+        r"video posts|photo posts)\b"
+    )
+
+    has_post_intent = bool(re.search(post_pattern, question_lower))
+    has_time_intent = bool(re.search(time_pattern, question_lower))
+    has_content_intent = bool(re.search(content_pattern, question_lower))
+
+    if has_post_intent and not has_time_intent:
+        return ["top_posts"]
+
+    if has_time_intent and not has_post_intent:
+        return ["posting_analysis"]
+
+    if has_content_intent:
+        return ["content_analysis"]
+
     model = create_router_model()
 
     prompt = f"""
     You are an intelligent query router for an Instagram analytics report.
 
-    Your task is to understand the user's question and identify
-    which report sections contain information needed to answer it.
+    Identify which report sections contain information needed
+    to answer the user's question.
 
-    Available report sections:
-
+    Available sections:
     {AVAILABLE_SECTIONS}
 
     Section descriptions:
 
     profile: Username, full name, followers, following, biography.
-    metrics: Total likes, comments, interactions and averages.
+
+    metrics: Account-wide total likes, comments, interactions,
+    average likes per post and average comments per post.
+
     top_posts: Individual post captions, likes, comments and views.
+    Use this section to identify the post with the highest likes,
+    comments or views.
+
     suggestions: Recommendations for improving the Instagram account.
-    posting_analysis: Posting hours, number of posts and average likes.
+
+    posting_analysis: Posting hours, posting days, number of posts
+    and average likes by posting time.
+
     content_analysis: Performance of different content types.
+
     growth: Starting followers, ending followers and growth percentage.
+
     llm_insights: AI-generated observations and supporting evidence.
 
-    Instructions:
+    Important routing rules:
 
-    1. Understand the meaning and intent of the user's question.
-    2. Select all sections required to answer the question.
-    3. Select multiple sections when comparison or combined information is needed.
-    4. Select only relevant sections.
-    5. Never invent section names.
-    6. If the question is unrelated to the Instagram report,
-       return an empty list.
+    1. Questions about a specific individual post must use top_posts.
+    2. Questions about average likes across the entire account
+       must use metrics.
+    3. Questions about the best posting hour or day must use
+       posting_analysis.
+    4. Questions about content formats must use content_analysis.
+    5. For comparisons, select all required sections.
+    6. Select only sections that directly help answer the question.
+    7. Never invent section names.
+    8. If unrelated to the Instagram report, return an empty list.
 
-    Return ONLY valid JSON in this exact format:
+    Return ONLY valid JSON:
 
     {{
         "sections": ["section_name"]
