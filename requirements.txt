@@ -1,11 +1,17 @@
 
+# ==========================================
+# Instagram AI Growth Report
+# Complete Project Dependencies
+# ==========================================
+
 # Instagram Data Collection
 apify-client
 
-# Google Gemini API
+# AI Models - Google Gemini
 google-genai
+langchain-google-genai
 
-# Ollama API communication
+# Ollama API Communication
 requests
 
 # Streamlit Dashboard
@@ -13,12 +19,15 @@ streamlit
 
 # Data Visualization
 matplotlib
+pandas
 
 # Environment Variables
 python-dotenv
 
-# RAG - LangChain
+# LangChain and RAG
+langchain
 langchain-community
+langchain-core
 langchain-text-splitters
 
 # Vector Database
