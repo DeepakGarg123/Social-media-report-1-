@@ -7,19 +7,254 @@ import concurrent.futures
 
 from dotenv import load_dotenv
 from apify_client import ApifyClient
+from apify_client.errors import ApifyApiError
 
 from backend.logs.logs import logger
 
 
 load_dotenv()
 
-token = os.getenv("APIFY_API_TOKEN")
+# ---------------------------------------------------------------------------
+# Custom Apify-specific exception hierarchy
+# ---------------------------------------------------------------------------
 
-if not token:
-    raise ValueError("APIFY_API_TOKEN not found in .env file")
+class ApifyScrapingError(Exception):
+    """Base class for all Apify scraping failures."""
 
-client = ApifyClient(token)
 
+class ApifyTokenMissingError(ApifyScrapingError):
+    """Raised when the APIFY_API_TOKEN environment variable is not set."""
+
+
+class ApifyAuthenticationError(ApifyScrapingError):
+    """Raised when Apify rejects the token (401 / 403)."""
+
+
+class ApifyRateLimitError(ApifyScrapingError):
+    """Raised when Apify returns HTTP 429 (Too Many Requests)."""
+
+
+class ApifyActorTimeoutError(ApifyScrapingError):
+    """Raised when an Apify actor run times out."""
+
+
+class ApifyActorRunError(ApifyScrapingError):
+    """Raised when an Apify actor run fails or is aborted."""
+
+
+class ApifyDatasetEmptyError(ApifyScrapingError):
+    """Raised when an Apify actor run succeeds but the dataset is empty."""
+
+
+class ApifyNetworkError(ApifyScrapingError):
+    """Raised for network-level errors (connection refused, DNS, SSL …)."""
+
+
+class ApifyInvalidInputError(ApifyScrapingError):
+    """Raised when the input sent to the actor is invalid."""
+
+
+# ---------------------------------------------------------------------------
+# Token validation at import time
+# ---------------------------------------------------------------------------
+
+_token = os.getenv("APIFY_API_TOKEN")
+
+if not _token:
+    raise ApifyTokenMissingError(
+        "[Apify Failure] APIFY_API_TOKEN not found in the .env file. "
+        "Please set a valid token and restart the application."
+    )
+
+_client = ApifyClient(_token)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _classify_apify_error(err: Exception, context: str) -> ApifyScrapingError:
+    """
+    Inspect a raw exception raised by the Apify client and return a
+    descriptive ApifyScrapingError subclass so callers can distinguish
+    failure modes without catching a bare Exception.
+    """
+    err_str = str(err).lower()
+
+    # --- HTTP-level errors surfaced by ApifyApiError ---
+    if isinstance(err, ApifyApiError):
+        status = getattr(err, "status_code", None)
+
+        if status in (401, 403):
+            return ApifyAuthenticationError(
+                f"[Apify Failure – {context}] "
+                f"Authentication failed (HTTP {status}). "
+                "Your APIFY_API_TOKEN may be invalid or expired. "
+                f"Original error: {err}"
+            )
+
+        if status == 429:
+            return ApifyRateLimitError(
+                f"[Apify Failure – {context}] "
+                "Rate limit exceeded (HTTP 429). "
+                "Too many requests were sent to Apify. "
+                f"Original error: {err}"
+            )
+
+        if status == 400:
+            return ApifyInvalidInputError(
+                f"[Apify Failure – {context}] "
+                "Invalid input sent to the Apify actor (HTTP 400). "
+                f"Original error: {err}"
+            )
+
+        if status is not None and status >= 500:
+            return ApifyActorRunError(
+                f"[Apify Failure – {context}] "
+                f"Apify server error (HTTP {status}). "
+                f"Original error: {err}"
+            )
+
+    # --- Keyword-based classification for non-HTTP errors ---
+    if any(kw in err_str for kw in ("timeout", "timed out", "time out")):
+        return ApifyActorTimeoutError(
+            f"[Apify Failure – {context}] "
+            "The Apify actor run timed out. "
+            "Consider reducing max_posts or retrying later. "
+            f"Original error: {err}"
+        )
+
+    if any(kw in err_str for kw in ("abort", "aborted", "failed", "did not succeed")):
+        return ApifyActorRunError(
+            f"[Apify Failure – {context}] "
+            "The Apify actor run was aborted or failed. "
+            f"Original error: {err}"
+        )
+
+    if any(kw in err_str for kw in (
+        "connection", "refused", "ssl", "certificate",
+        "network", "dns", "resolve", "unreachable", "socket"
+    )):
+        return ApifyNetworkError(
+            f"[Apify Failure – {context}] "
+            "A network error occurred while communicating with Apify. "
+            "Check your internet connection. "
+            f"Original error: {err}"
+        )
+
+    if any(kw in err_str for kw in ("unauthorized", "forbidden", "invalid token", "token")):
+        return ApifyAuthenticationError(
+            f"[Apify Failure – {context}] "
+            "Authentication error. Your APIFY_API_TOKEN may be invalid. "
+            f"Original error: {err}"
+        )
+
+    if any(kw in err_str for kw in ("quota", "limit", "exceeded", "rate")):
+        return ApifyRateLimitError(
+            f"[Apify Failure – {context}] "
+            "Apify quota or rate limit exceeded. "
+            f"Original error: {err}"
+        )
+
+    # --- Generic fallback ---
+    return ApifyScrapingError(
+        f"[Apify Failure – {context}] "
+        f"An unexpected Apify error occurred: {err}"
+    )
+
+
+def _safe_call_actor(actor_id: str, run_input: dict, context: str):
+    """
+    Call an Apify actor, convert any failure into a typed ApifyScrapingError,
+    and return the resulting dataset items.
+
+    Raises
+    ------
+    ApifyTokenMissingError      – token not set
+    ApifyAuthenticationError    – HTTP 401 / 403 / bad token keyword
+    ApifyRateLimitError         – HTTP 429 / quota exceeded
+    ApifyActorTimeoutError      – run timed out
+    ApifyActorRunError          – run aborted / failed
+    ApifyDatasetEmptyError      – run succeeded but dataset is empty
+    ApifyNetworkError           – connection / DNS / SSL error
+    ApifyInvalidInputError      – HTTP 400 bad input
+    ApifyScrapingError          – any other Apify-related error
+    """
+    token = os.getenv("APIFY_API_TOKEN")
+
+    if not token:
+        raise ApifyTokenMissingError(
+            f"[Apify Failure – {context}] "
+            "APIFY_API_TOKEN is missing. "
+            "Cannot proceed with live scraping."
+        )
+
+    client = ApifyClient(token)
+
+    try:
+        actor_run = client.actor(actor_id).call(run_input=run_input)
+
+    except ApifyApiError as api_err:
+        raise _classify_apify_error(api_err, context) from api_err
+
+    except Exception as err:
+        raise _classify_apify_error(err, context) from err
+
+    # Validate the run object returned by Apify
+    if actor_run is None:
+        raise ApifyActorRunError(
+            f"[Apify Failure – {context}] "
+            "Apify returned None instead of a run object. "
+            "The actor may have failed to start."
+        )
+
+    run_status = (actor_run.get("status") or "").upper()
+
+    if run_status in ("FAILED", "ABORTED", "TIMED-OUT"):
+        status_msg = {
+            "FAILED":    "The actor run failed.",
+            "ABORTED":   "The actor run was aborted.",
+            "TIMED-OUT": "The actor run timed out.",
+        }.get(run_status, f"The actor run ended with status '{run_status}'.")
+
+        if run_status == "TIMED-OUT":
+            raise ApifyActorTimeoutError(
+                f"[Apify Failure – {context}] {status_msg}"
+            )
+
+        raise ApifyActorRunError(
+            f"[Apify Failure – {context}] {status_msg}"
+        )
+
+    dataset_id = actor_run.get("defaultDatasetId")
+
+    if not dataset_id:
+        raise ApifyActorRunError(
+            f"[Apify Failure – {context}] "
+            "Apify run did not return a dataset ID."
+        )
+
+    try:
+        items = client.dataset(dataset_id).list_items().items
+
+    except ApifyApiError as api_err:
+        raise _classify_apify_error(api_err, f"{context} / dataset fetch") from api_err
+
+    except Exception as err:
+        raise _classify_apify_error(err, f"{context} / dataset fetch") from err
+
+    if items is None:
+        raise ApifyDatasetEmptyError(
+            f"[Apify Failure – {context}] "
+            "Dataset list_items() returned None."
+        )
+
+    return items
+
+
+# ---------------------------------------------------------------------------
+# Main scrape function
+# ---------------------------------------------------------------------------
 
 def scrape_instagram(
     instagram_url,
@@ -176,13 +411,6 @@ def scrape_instagram(
     # LIVE APIFY SCRAPING
     # --------------------------------------------------
 
-    token = os.getenv("APIFY_API_TOKEN")
-
-    if not token:
-        raise ValueError("APIFY_API_TOKEN not found in .env file")
-
-    client = ApifyClient(token)
-
     profile_input = {
         "usernames": [username]
     }
@@ -207,41 +435,151 @@ def scrape_instagram(
     )
 
     def _fetch_profile():
-        p_run = client.actor(
-            "apify/instagram-profile-scraper"
-        ).call(run_input=profile_input)
-
-        return client.dataset(
-            p_run.default_dataset_id
-        ).list_items().items
+        return _safe_call_actor(
+            "apify/instagram-profile-scraper",
+            profile_input,
+            context="profile scraper"
+        )
 
     def _fetch_posts():
-        posts_run = client.actor(
-            "apify/instagram-scraper"
-        ).call(run_input=run_input)
-
-        return client.dataset(
-            posts_run.default_dataset_id
-        ).list_items().items
+        return _safe_call_actor(
+            "apify/instagram-scraper",
+            run_input,
+            context="post scraper"
+        )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
 
         profile_future = executor.submit(_fetch_profile)
         posts_future = executor.submit(_fetch_posts)
 
+        # --- Profile fetch error handling ---
+        profile_items = None
+
         try:
             profile_items = profile_future.result()
 
+        except ApifyTokenMissingError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyAuthenticationError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyRateLimitError as err:
+            msg = str(err)
+            print(msg)
+            logger.warning(msg)
+            return None
+
+        except ApifyActorTimeoutError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyActorRunError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyDatasetEmptyError as err:
+            msg = str(err)
+            print(msg)
+            logger.warning(msg)
+            # treat as not found — will be caught below by `if not profile_items`
+
+        except ApifyInvalidInputError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyNetworkError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
+        except ApifyScrapingError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+            return None
+
         except Exception as err:
-            logger.error(f"Apify profile scraping failed: {err}")
-            profile_items = None
+            msg = (
+                f"[Apify Failure – profile scraper] "
+                f"An unexpected error occurred: {err}"
+            )
+            print(msg)
+            logger.error(msg)
+            return None
+
+        # --- Posts fetch error handling ---
+        items = []
 
         try:
             items = posts_future.result()
 
+        except ApifyTokenMissingError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyAuthenticationError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyRateLimitError as err:
+            msg = str(err)
+            print(msg)
+            logger.warning(msg)
+
+        except ApifyActorTimeoutError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyActorRunError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyDatasetEmptyError as err:
+            msg = str(err)
+            print(msg)
+            logger.warning(msg)
+
+        except ApifyInvalidInputError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyNetworkError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
+        except ApifyScrapingError as err:
+            msg = str(err)
+            print(msg)
+            logger.error(msg)
+
         except Exception as err:
-            logger.error(f"Apify post scraping failed: {err}")
-            items = []
+            msg = (
+                f"[Apify Failure – post scraper] "
+                f"An unexpected error occurred: {err}"
+            )
+            print(msg)
+            logger.error(msg)
 
     if not profile_items:
         print("Instagram profile not found.")
