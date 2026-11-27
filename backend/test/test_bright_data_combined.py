@@ -15,7 +15,7 @@ BASE_URL = "https://api.brightdata.com/datasets/v3"
 PROFILE_DATASET_ID = "gd_l1vikfch901nx3by4"
 POST_DATASET_ID = "gd_lk5ns7kz21pck8jpis"
 
-USERNAME = "sidhu_moosewala"
+USERNAME = "arman.dxp"
 
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
@@ -183,11 +183,11 @@ def scrape_profile():
 
 
 def scrape_posts(post_urls):
-
-    print("\nSTEP 2: SCRAPING INSTAGRAM POSTS")
-
     if not post_urls:
-        raise Exception("No post URLs found in profile data")
+        print("No post URLs available for this account.")
+        return []
+
+    # Keep the existing scraping logic below
 
     payload = [
         {"url": url}

@@ -3,211 +3,300 @@ import os
 import time
 import requests
 
-from pathlib import Path
 from dotenv import load_dotenv
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ENV_PATH = PROJECT_ROOT / ".env"
-
-load_dotenv(ENV_PATH, override=True)
+load_dotenv()
 
 API_KEY = os.getenv("BRIGHT_DATA_API_KEY")
 
+PROFILE_DATASET_ID = "gd_l1vikfch901nx3by4"
+POST_DATASET_ID = "gd_lk5ns7kz21pck8jpis"
+
 BASE_URL = "https://api.brightdata.com/datasets/v3"
 
-DATASET_ID = "gd_lk5ns7kz21pck8jpis"
-
-POST_URLS = [
-    "https://www.instagram.com/p/DfmPsyGB2pe/",
-    "https://www.instagram.com/p/DfUWHlklC56/",
-    "https://www.instagram.com/p/DfEy8kLAMqR/"
-]
-
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-}
+USERNAME = "sidhu_moosewala"
 
 
-def check_response(response, step):
+def get_headers():
+    if not API_KEY:
+        raise ValueError("BRIGHT_DATA_API_KEY is missing from .env")
 
-    print(f"\n{step} status:", response.status_code)
-
-    if not response.ok:
-        print("Error response:")
-        print(response.text)
-        response.raise_for_status()
+    return {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
 
 
-def trigger_scraping():
-
+def trigger_dataset(dataset_id, payload):
     url = f"{BASE_URL}/trigger"
 
     params = {
-        "dataset_id": DATASET_ID,
+        "dataset_id": dataset_id,
         "format": "json"
     }
 
-    payload = [
-        {
-            "url": post_url,
-            "country": ""
-        }
-        for post_url in POST_URLS
-    ]
-
-    print("\nStarting Instagram posts scraping...")
-    print("Number of posts:", len(POST_URLS))
-
     response = requests.post(
         url,
-        headers=HEADERS,
+        headers=get_headers(),
         params=params,
         json=payload,
         timeout=60
     )
 
-    check_response(response, "Trigger")
+    response.raise_for_status()
 
     result = response.json()
 
     snapshot_id = result.get("snapshot_id")
 
     if not snapshot_id:
-        raise ValueError(f"Snapshot ID missing: {result}")
+        raise Exception(f"Snapshot ID missing: {result}")
 
-    print("\nSnapshot ID:", snapshot_id)
+    print(f"Snapshot started: {snapshot_id}")
 
     return snapshot_id
 
 
-def check_progress(snapshot_id):
-
+def wait_for_snapshot(snapshot_id, max_attempts=30):
     url = f"{BASE_URL}/progress/{snapshot_id}"
 
-    for attempt in range(1, 31):
-
-        print(f"\nChecking progress: {attempt}/30")
-
+    for attempt in range(max_attempts):
         response = requests.get(
             url,
-            headers=HEADERS,
-            timeout=60
+            headers=get_headers(),
+            timeout=30
         )
 
-        check_response(response, "Progress")
+        response.raise_for_status()
 
         result = response.json()
-
         status = result.get("status")
 
-        print("Current status:", status)
+        print(f"Attempt {attempt + 1}: {status}")
 
         if status == "ready":
-            return True
+            print("Snapshot is ready!")
+            return
 
-        if status == "failed":
-            raise RuntimeError(
-                f"Scraping failed: {result}"
-            )
+        if status in ("failed", "error"):
+            raise Exception(f"Snapshot failed: {result}")
 
         time.sleep(10)
 
-    raise TimeoutError(
-        "Scraping did not finish within 5 minutes."
-    )
+    raise TimeoutError("Snapshot processing timed out.")
 
 
 def download_snapshot(snapshot_id):
-
     url = f"{BASE_URL}/snapshot/{snapshot_id}"
-
-    params = {
-        "format": "json"
-    }
-
-    print("\nDownloading post data...")
 
     response = requests.get(
         url,
-        headers=HEADERS,
-        params=params,
+        headers=get_headers(),
+        params={"format": "json"},
         timeout=120
     )
 
-    check_response(response, "Snapshot")
+    response.raise_for_status()
 
-    return response.json()
-
-
-def display_results(data):
-
-    print("\nInstagram Post Engagement Results")
-    print("=" * 50)
-
-    if isinstance(data, dict):
-        data = [data]
+    data = response.json()
 
     if not isinstance(data, list):
-        print("Unexpected response format:")
-        print(data)
-        return
+        raise Exception("Unexpected snapshot response format.")
 
-    for index, post in enumerate(data, start=1):
+    return data
 
-        print(f"\nPost {index}")
-        print("-" * 40)
 
-        print("Username:", post.get("user_posted"))
-        print("Post URL:", post.get("url"))
+def run_dataset(dataset_id, payload):
+    snapshot_id = trigger_dataset(dataset_id, payload)
 
-        print("Likes:", post.get("likes"))
-        print("Comments:", post.get("num_comments"))
+    wait_for_snapshot(snapshot_id)
 
-        print("Date:", post.get("date_posted"))
+    return download_snapshot(snapshot_id)
 
-        print("Caption:", post.get("description"))
 
-        print("Available fields:", list(post.keys()))
+def extract_post_urls(profile_data):
+    post_urls = []
+
+    embedded_posts = profile_data.get("posts", [])
+
+    if not isinstance(embedded_posts, list):
+        return post_urls
+
+    for post in embedded_posts:
+        if not isinstance(post, dict):
+            continue
+
+        post_url = (
+            post.get("url")
+            or post.get("post_url")
+            or post.get("postUrl")
+            or post.get("link")
+        )
+
+        if post_url and post_url not in post_urls:
+            post_urls.append(post_url)
+
+    return post_urls
+
+
+def scrape_profile(username):
+    print("\nScraping Instagram profile...")
+
+    profile_url = f"https://www.instagram.com/{username}/"
+
+    records = run_dataset(
+        PROFILE_DATASET_ID,
+        [{"url": profile_url}]
+    )
+
+    if not records:
+        raise Exception("No profile data returned.")
+
+    print(f"Profile records received: {len(records)}")
+
+    return records[0]
+
+
+def scrape_posts(post_urls):
+    if not post_urls:
+        print("\nNo post URLs found.")
+        return []
+
+    print(f"\nScraping {len(post_urls)} Instagram posts...")
+
+    payload = [
+        {"url": url}
+        for url in post_urls
+    ]
+
+    records = run_dataset(
+        POST_DATASET_ID,
+        payload
+    )
+
+    print(f"Post records received: {len(records)}")
+
+    return records
+
+
+def normalize_data(profile_data, post_records, username):
+    account = (
+        profile_data.get("account")
+        or profile_data.get("username")
+    )
+
+    if not account or account.lower() != username.lower():
+        raise Exception(
+            f"Profile mismatch. Requested: {username}, Received: {account}"
+        )
+
+    profile = {
+        "username": account,
+        "fullName": profile_data.get("full_name", ""),
+        "followersCount": profile_data.get("followers", 0) or 0,
+        "followsCount": profile_data.get("following", 0) or 0,
+        "postsCount": profile_data.get("posts_count", 0) or 0,
+        "verified": profile_data.get("is_verified", False),
+        "private": profile_data.get("is_private", False),
+        "profilePicUrlHD": profile_data.get("profile_pic_url", ""),
+        "biography": profile_data.get("biography", ""),
+        "latestPosts": [],
+        "_provider": "bright_data"
+    }
+
+    posts = []
+
+    mismatches = 0
+
+    for post in post_records:
+        post_username = post.get("user_posted", "")
+
+        if not post_username or post_username.lower() != username.lower():
+            mismatches += 1
+            continue
+
+        normalized_post = {
+            "ownerUsername": post_username,
+            "url": post.get("url", ""),
+            "caption": post.get("description", "") or "",
+            "likesCount": post.get("likes", 0) or 0,
+            "commentsCount": post.get("num_comments", 0) or 0,
+            "timestamp": post.get("date_posted"),
+            "shortCode": post.get("shortcode", ""),
+            "productType": (
+                post.get("product_type")
+                or post.get("content_type")
+                or "unknown"
+            ),
+            "videoViewCount": post.get("video_views")
+        }
+
+        posts.append(normalized_post)
+
+    print(f"\nMatching posts: {len(posts)}")
+    print(f"Rejected mismatched posts: {mismatches}")
+
+    return profile, posts
 
 
 def main():
+    print("=" * 60)
+    print("BRIGHT DATA COMBINED TEST")
+    print("=" * 60)
 
-    print("Project root:", PROJECT_ROOT)
-    print("Env file exists:", ENV_PATH.exists())
-    print("API key loaded:", bool(API_KEY))
+    profile_data = scrape_profile(USERNAME)
 
-    if not API_KEY:
-        raise ValueError(
-            "BRIGHT_DATA_API_KEY is missing from .env"
-        )
+    post_urls = extract_post_urls(profile_data)
 
-    snapshot_id = trigger_scraping()
+    print(f"\nPost URLs found: {len(post_urls)}")
 
-    check_progress(snapshot_id)
+    post_records = scrape_posts(post_urls[:12])
 
-    data = download_snapshot(snapshot_id)
+    print("\n" + "=" * 60)
+    print("RAW PROFILE RECORD")
+    print("=" * 60)
+    print(profile_data)
 
-    print("\nScraping completed successfully!")
+    print("\n" + "=" * 60)
+    print("RAW POST RECORD")
+    print("=" * 60)
 
-    display_results(data)
+    if post_records:
+        print(post_records[0])
+    else:
+        print("No post records available.")
+
+    profile, posts = normalize_data(
+        profile_data,
+        post_records,
+        USERNAME
+    )
+
+    print("\n" + "=" * 60)
+    print("NORMALIZED PROFILE")
+    print("=" * 60)
+    print(profile)
+
+    print("\n" + "=" * 60)
+    print("NORMALIZED POSTS")
+    print("=" * 60)
+
+    for post in posts:
+        print(post)
+
+    print("\n" + "=" * 60)
+    print("FINAL SUMMARY")
+    print("=" * 60)
+
+    print("Username:", profile["username"])
+    print("Followers:", profile["followersCount"])
+    print("Following:", profile["followsCount"])
+    print("Total posts:", profile["postsCount"])
+    print("Posts collected:", len(posts))
+
+    print("\nBRIGHT DATA TEST COMPLETED!")
 
 
 if __name__ == "__main__":
-
-    try:
-        main()
-
-    except requests.exceptions.HTTPError:
-        print("\nHTTP request failed.")
-
-    except requests.exceptions.Timeout:
-        print("\nRequest timed out.")
-
-    except requests.exceptions.ConnectionError:
-        print("\nConnection error.")
-
-    except Exception as error:
-        print("\nError:", error)
+    main()
